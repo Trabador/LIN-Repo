@@ -26,6 +26,11 @@
 	LINFLEX configuration by bitfields for a beter understanding of module
 	Check of revisionframe and LIN Status Register to verify the state of the
 	module.																      */
+/*----------------------------------------------------------------------------*/
+/*  1.1      | 12/08/2015  |                                | Roberto Palos   */
+/*	Modification of receiveLINFrame											  */
+/*	Changed correct Bit-Field for LINFLEX_0.LINIER.B.DBEIE					  */
+/*	Added void MasterDataReceive Function									  */
 /*============================================================================*/
 
 #include "MPC5606B.h"
@@ -78,7 +83,7 @@ void LINFlex_Init(void){
 	/* Wait for the INIT mode */
 	/* Example Code For Wait To INIT mode on
 	while (0x1000 != (LINFLEX_0.LINSR.R & 0xF000)) {}*/
-	while(LINFLEX_0.LINSR.B.LINS =! 1){}/*Wait for INIT Mode whit LINSR Register LINS field*/
+	while(LINFLEX_0.LINSR.B.LINS != 1){}/*Wait for INIT Mode whit LINSR Register LINS field*/
 	LINFLEX_0.LINCR1.B.CCD = 0;			/* Checksum calculation is done by hardware */
 	LINFLEX_0.LINCR1.B.CFD = 0;			/* Checksum field is sent after the bytes */
 	LINFLEX_0.LINCR1.B.LASE = 1;		/* LIN-Slave auto resynch */
@@ -133,7 +138,7 @@ void LINFlex_Init(void){
 	LINFLEX_0.LINIER.B.LSIE = 0;		/* No interrupt when LIN State Change*/
 	LINFLEX_0.LINIER.B.WUIE = 0;		/* No interrupt when Wake Up*/
 	LINFLEX_0.LINIER.B.DBFIE = 0;		/* No interrupt when Data Buffer Full*/
-	LINFLEX_0.LINIER.B.DBEIETOIE = 0;	/* No interrupt when Data buffer Empty / Time Out */
+	LINFLEX_0.LINIER.B.DBEIE = 0;		/* No interrupt when Data buffer Empty / Time Out */
 	LINFLEX_0.LINIER.B.DRIE = 1;		/* Interrupt when Data Reception Completed*/
 	LINFLEX_0.LINIER.B.DTIE = 1;		/* Interrupt when Data Transmitted Completed*/
 	LINFLEX_0.LINIER.B.HRIE = 1;		/* Interrupt when LIN Header Received is valid*/
@@ -160,24 +165,55 @@ void LINFlex_Init(void){
   
 }
 
-void receiveLINFrame (void) {
-	LINFLEX_0.BIDR.B.DFL = 2;		/* Number of data bytes in response - 1*/
-	LINFLEX_0.BIDR.B.DIR = 0;		/*LINFlex receives the data and copies them in the BDR registers*/
-	LINFLEX_0.BIDR.B.CCS = 1;		/* Classic cheksum covering data fields only*/
-	LINFLEX_0.BIDR.B.ID = 0x0F;		/* Identifier without parity*/
-	LINFLEX_0.LINCR2.B.HTRQ = 1;	/* Header transmission Request*/
-	LINFLEX_0.LINCR2.B.DTRQ = 1;	/* Data transmit request*/
+/* This functions is only for master*/
+void MasterDataReceive(uint16_t bidr_value){
+	static vuint32_t rx_data[8];
+	LINFLEX_0.BIDR.R = bidr_value;
+	LINFLEX_0.LINCR2.B.HTRQ = 1;
+	while(0 == LINFLEX_0.LINSR.B.DRF){
+		
+	}
+	rx_data[0] = LINFLEX_0.BDRL.B.DATA0;
+	rx_data[1] = LINFLEX_0.BDRL.B.DATA1;
+	rx_data[2] = LINFLEX_0.BDRL.B.DATA2;
+	rx_data[3] = LINFLEX_0.BDRL.B.DATA3;
+	rx_data[4] = LINFLEX_0.BDRM.B.DATA4;
+	rx_data[5] = LINFLEX_0.BDRM.B.DATA5;
+	rx_data[6] = LINFLEX_0.BDRM.B.DATA6;
+	rx_data[7] = LINFLEX_0.BDRM.B.DATA7;
 	
-	
+	LINFLEX_0.LINSR.R = 0x207;
 }
+
+void receiveLINFrame(void){
+	static vuint32_t  rx_datas[8];
+	uint8_t cmd_Recive;
+	static vuint32_t lin_status = 0;
+	lin_status = LINFLEX_0.LINSR.R;
+	/* wait for RMB */
+	while (1 != LINFLEX_0.LINSR.B.RMB) {}  /* Wait for Release Message Buffer */
+	/* get the data */
+    rx_datas[0] = LINFLEX_0.BDRL.B.DATA0;	// se recive un comando que se guarda en una variale para despues ser ejecutado------------
+    cmd_Recive =(uint8_t)rx_datas[0];
+    //rx_datas[1] = LINFLEX_0.BDRL.B.DATA1;
+    //rx_datas[2] = LINFLEX_0.BDRL.B.DATA2;
+    //rx_datas[3] = LINFLEX_0.BDRL.B.DATA3;
+    //rx_datas[4] = LINFLEX_0.BDRM.B.DATA4;
+    //rx_datas[5] = LINFLEX_0.BDRM.B.DATA5;
+    //rx_datas[6] = LINFLEX_0.BDRM.B.DATA6;
+    //rx_datas[7] = LINFLEX_0.BDRM.B.DATA7;
+	/* clear the DRF and RMB flags by writing 1 to them */
+	LINFLEX_0.LINSR.R = 0x0205;
+}
+
 
 void main(void) {
 
-  volatile uint32_t IdleCtr = 0;
-  initModesAndClks();      /* Initialize mode entries */
-  initPeriClkGen();        /* Initialize peripheral clock generation for LINFlex */
-  disableWatchdog();       /* Disable watchdog */
-  initLINFlex_0();         /* Initialize FLEXCAN 0 as master */
+  uint16_t IdleCtr = 0;
+  initModesAndClks();	/* Initialize mode entries */
+  initPeriClkGen();		/* Initialize peripheral clock generation for LINFlex */
+  disableWatchdog();	/* Disable watchdog */
+  LINFlex_Init;			/* Initialize LINFlex_0 as slave */
   while (1) {
   	receiveLINFrame();     /* Transmit one frame from master */
   	if(LINFLEX_0.LINSR.B.LINS == 3){
