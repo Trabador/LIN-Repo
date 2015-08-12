@@ -42,6 +42,9 @@
 /*	Creation of tree folder structure in project.								*/
 /*	Added LED.c and LED.h files.												*/
 /*	Added template to explain functions, variables and headers.					*/
+/*------------------------------------------------------------------------------*/
+/*	1.4		|12/08/2015	|								|	Roberto Palos		*/
+/*	Added scheduler and MemAlloc.												*/
 /*==============================================================================*/
 
 #include "MPC5606B.h"
@@ -59,7 +62,7 @@ void main(void) {
 	MemAllocInit(&MemAllocConfig);
 	LIN_LINFlex0Init();			/* Initialize LINFlex_0 as slave */
 	LED_INIT
-	SchM_Init(&SchedulerConfig);
+	SchM_Init(&cs_SchConfig);
 	SchM_Start();
   
   for(;;){
