@@ -20,6 +20,9 @@
 /*----------------------------------------------------------------------------*/
 /*  1.0      | 07/08/15    |                | Alexis Garcia   				  */
 /* Creation of the header                                             		  */
+/*----------------------------------------------------------------------------*/
+/*  1.1      | 12/08/15    |                			  | Roberto Palos     */
+/* Modification of MACROS and added config.                            		  */
 /*============================================================================*/
 
 #ifndef _LED_H
@@ -36,7 +39,7 @@
 
 #define 	LED			68
 #define 	STARTUP		(SIU.GPDO[LED].R = 0) 
-#define 	LED_INIT()	{SIU.PCR[LED].R = 0x0200,SIU.GPDO[LED].R = 1}
+#define 	LED_INIT	{SIU.PCR[LED].R = 0x0200;SIU.GPDO[LED].R = 1;}
 
 /* typedef */
 
