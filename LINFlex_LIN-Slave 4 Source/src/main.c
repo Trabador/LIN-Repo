@@ -1,37 +1,40 @@
-/*============================================================================*/
-/*                        SV C CE SOFTWARE GROUP                              */
-/*============================================================================*/
-/*                        OBJECT SPECIFICATION                                */
-/*============================================================================*
-* C Source:         %main.c%
+/*==============================================================================*/
+/*                        SV C CE SOFTWARE GROUP								*/
+/*==============================================================================*/
+/*                        OBJECT SPECIFICATION									*/
+/*==============================================================================*/
+/* C Source:         %main.c%
 * Instance:         LIN_SLAVE
 * %version:         1 %
 * %created_by:      uid10734106 %
 * %date_created:    Tue Aug  11 10:18:00 2015 %
-*=============================================================================*/
-/* DESCRIPTION : Main File For LIN Slave                                      */
-/*============================================================================*/
-/* FUNCTION COMMENT :	This file is a debug purpose to test the functionality
-						of the LINFLEX hardware for MPC5606BK development
-						Board                                                 */
-/*                                                                            */
-/*============================================================================*/
-/*                               OBJECT HISTORY                               */
-/*============================================================================*/
-/*  REVISION |   DATE      |                               |      AUTHOR      */
-/*----------------------------------------------------------------------------*/
-/*  1.0      | 11/08/2015  |                               | Roberto Palos    */
-/*	Creation of the file.
-	Added LINFLEX slave module configuration and tested with osciloscope.
-	LINFLEX configuration by bitfields for a beter understanding of module
-	Check of revisionframe and LIN Status Register to verify the state of the
-	module.																      */
-/*----------------------------------------------------------------------------*/
-/*  1.1      | 12/08/2015  |                                | Roberto Palos   */
-/*	Modification of receiveLINFrame											  */
-/*	Changed correct Bit-Field for LINFLEX_0.LINIER.B.DBEIE					  */
-/*	Added void MasterDataReceive Function									  */
-/*============================================================================*/
+*===============================================================================*/
+/* DESCRIPTION : Main File For LIN Slave										*/
+/*==============================================================================*/
+/* FUNCTION COMMENT :	This file is a debug purpose to test the functionality	*/
+/*						of the LINFLEX hardware for MPC5606BK development		*/
+/*						Board													*/
+/*																				*/
+/*==============================================================================*/
+/*                               OBJECT HISTORY									*/
+/*==============================================================================*/
+/* REVISION	|	DATE	|								|      AUTHOR			*/
+/*------------------------------------------------------------------------------*/
+/*  1.0		|11/08/2015	|								| Roberto Palos			*/
+/*	Creation of the file.														*/
+/*	Added LINFLEX slave module configuration and tested with osciloscope.		*/
+/*	LINFLEX configuration by bitfields for a beter understanding of module		*/
+/*	Check of revisionframe and LIN Status Register to verify the state of the	*/
+/*	module.																      	*/
+/*------------------------------------------------------------------------------*/
+/*  1.1		|12/08/2015	|								| Roberto Palos			*/
+/*	Modification of receiveLINFrame											  	*/
+/*	Changed correct Bit-Field for LINFLEX_0.LINIER.B.DBEIE					  	*/
+/*	Added void MasterDataReceive Function									  	*/
+/*------------------------------------------------------------------------------*/
+/*	1.2		|12/08/2015	|								| Roberto Palos			*/
+/*	Added functionality of the slave module response to message.				*/
+/*==============================================================================*/
 
 #include "MPC5606B.h"
 
@@ -120,6 +123,22 @@ void LINFlex_Init(void){
 	LINFLEX_0.IFCR[0].B.DIR = 0;	/*Direction: Receives Data and copies in BDRL and BDRM registers*/
 	LINFLEX_0.IFCR[0].B.CCS = 1;	/*Classic Checksum On (LIN 1.3 and earlie)*/
 	LINFLEX_0.IFCR[0].B.ID = 0x0F;	/*Identifier without identifier parity. 0xCF*/
+	/*IDENTIFIER 2*/
+	LINFLEX_0.IFCR[1].B.DFL = 1;	/* Data Field Length*/
+	LINFLEX_0.IFCR[1].B.DIR = 1;	/*Direction: Receives Data and copies in BDRL and BDRM registers*/
+	LINFLEX_0.IFCR[1].B.CCS = 1;	/*Classic Checksum On (LIN 1.3 and earlie)*/
+	LINFLEX_0.IFCR[1].B.ID = 0x13;	/*Identifier without identifier parity. 0xD3*/
+	/*IDENTIFIER 3*/
+	LINFLEX_0.IFCR[2].B.DFL = 2;	/* Data Field Length*/
+	LINFLEX_0.IFCR[2].B.DIR = 0;	/*Direction: Receives Data and copies in BDRL and BDRM registers*/
+	LINFLEX_0.IFCR[2].B.CCS = 1;	/*Classic Checksum On (LIN 1.3 and earlie)*/
+	LINFLEX_0.IFCR[2].B.ID = 0x23;	/*Identifier without identifier parity. 0xA3*/
+	/*IDENTIFIER 4*/
+	LINFLEX_0.IFCR[3].B.DFL = 2;	/* Data Field Length*/
+	LINFLEX_0.IFCR[3].B.DIR = 0;	/*Direction: Receives Data and copies in BDRL and BDRM registers*/
+	LINFLEX_0.IFCR[3].B.CCS = 1;	/*Classic Checksum On (LIN 1.3 and earlie)*/
+	LINFLEX_0.IFCR[3].B.ID = 0x33;	/*Identifier without identifier parity. 0x73*/
+	
 	
 	
 	/* LIN control register 2*/
@@ -147,7 +166,7 @@ void LINFlex_Init(void){
 	LINFLEX_0.LINCR1.B.INIT = 0;
 
 	/*Port Configuration For LINFLEX_0 */
-	SIU.PCR[18].R = 0x0400;         /* MPC56xxB: Configure port B2 as LIN0TX */
+	SIU.PCR[18].R = 0x0604;         /* MPC56xxB: Configure port B2 as LIN0TX 0x0400*/
 	SIU.PCR[19].R = 0x0103;         /* MPC56xxB: Configure port B3 as LIN0RX */
 	
 	
@@ -208,34 +227,25 @@ void receiveLINFrame(void){
 
 
 void main(void) {
-
-  uint16_t IdleCtr = 0;
+	static vuint32_t lin_status = 0;
+	static uint32_t toggle = 0;
+  T_UBYTE header = 0x00;
   initModesAndClks();	/* Initialize mode entries */
   initPeriClkGen();		/* Initialize peripheral clock generation for LINFlex */
   disableWatchdog();	/* Disable watchdog */
-  LINFlex_Init;			/* Initialize LINFlex_0 as slave */
-  while (1) {
-  	receiveLINFrame();     /* Transmit one frame from master */
-  	if(LINFLEX_0.LINSR.B.LINS == 3){
-  		LED_ON(LED1);
-  	}
-  	if(LINFLEX_0.LINSR.B.LINS == 4){
-  		LED_ON(LED2);
-  	}
-  	if(LINFLEX_0.LINSR.B.LINS == 5){
-  		LED_ON(LED3);
-  	}
-  	if(LINFLEX_0.LINSR.B.LINS == 6){
-  		LED_ON(LED4);
-  	}
-  	
-  	if(LINFLEX_0.LINSR.B.LINS == 2){
-  		LED_OFF(LED1);
-  		LED_OFF(LED2);
-  		LED_OFF(LED3);
-  		LED_OFF(LED4);
-  		
-  	}
-  }
+  LINFlex_Init();			/* Initialize LINFlex_0 as slave */
+	while (1) {
+  	//receiveLINFrame();     /* Transmit one frame from master */
+  //header = LINFLEX_0.BIDR.B.ID;
+	if(LINFLEX_0.BIDR.B.ID == 0x13){
+		LED_TOGGLE(LED2);
+		LINFLEX_0.BIDR.B.DIR = 0;
+		LINFLEX_0.BIDR.B.CCS = 1;
+		//LINFLEX_0.BIDR.B.DFL = 1;
+		LINFLEX_0.IFCR[1].B.DFL = 1;
+		LINFLEX_0.BIDR.B.ID = 0x13;
+		LINFLEX_0.BDRL.B.DATA0 = 0x34;
+		LINFLEX_0.LINCR2.B.DTRQ = 1;    /* Request header transmission */
+	}
+	}
 }
-
