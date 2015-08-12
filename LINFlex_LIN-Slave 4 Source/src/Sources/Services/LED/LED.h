@@ -81,8 +81,10 @@ extern E_LedStateList re_LedSMState;
 /* ---------------------------------------- */
 
 /* Functions prototypes */
-
-
+void LED_LedOn(void);
+void LED_LedOff(void);
+void LED_LedToggle(void);
+void LED_StateMachine(void);
 /* Functions macros */
 
 

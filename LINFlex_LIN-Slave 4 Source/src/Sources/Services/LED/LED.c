@@ -56,18 +56,15 @@ E_LedStateList re_LedSMState;		/*contains the actual state for the LED state mac
 
 /* Private defines */
 
-void LED_LedOn(void)
-{
+void LED_LedOn(void){
 	LED_ON;
 }
 
-void LED_LedOff(void)
-{
+void LED_LedOff(void){
 	LED_OFF;
 }
 
-void LED_LedToggle(void)
-{
+void LED_LedToggle(void){
 	LED_TOGGLE;
 }
 
@@ -80,10 +77,8 @@ void LED_LedToggle(void)
 /* Exported functions */
 /* ------------------ */
 
-void LED_StateMachine(void)
-{
-	switch(re_LedSMState)
-	{
+void LED_StateMachine(void){
+	switch(re_LedSMState){
 		case ON:
 			LED_LedOn();
 		break;
@@ -97,7 +92,7 @@ void LED_StateMachine(void)
 		break;
 		
 		default:
-			re_LedSMState = ON;
+			re_LedSMState = re_LedSMState;
 		break;
 	}
 }

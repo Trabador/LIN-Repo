@@ -48,13 +48,20 @@
 #include "LINFlex.h"
 #include "GPIO.h"
 #include "LED.h"
+#include "MemAlloc_Cfg.h"
+#include "SchM_Cfg.h"
+
 
 void main(void) {
-  initModesAndClks();	/* Initialize mode entries */
-  initPeriClkGen();		/* Initialize peripheral clock generation for LINFlex */
-  disableWatchdog();	/* Disable watchdog */
-  LIN_LINFlex0Init();			/* Initialize LINFlex_0 as slave */
-  LED_INIT
+	initModesAndClks();	/* Initialize mode entries */
+	initPeriClkGen();		/* Initialize peripheral clock generation for LINFlex */
+	disableWatchdog();	/* Disable watchdog */
+	MemAllocInit(&MemAllocConfig);
+	LIN_LINFlex0Init();			/* Initialize LINFlex_0 as slave */
+	LED_INIT
+	SchM_Init(&SchedulerConfig);
+	SchM_Start();
+  
   for(;;){
   	/*Infinite loop*/
 	while (LINFLEX_0.LINSR.B.LINS == HEADER_RECEPTION){
